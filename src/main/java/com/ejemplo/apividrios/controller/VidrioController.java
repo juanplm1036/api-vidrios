@@ -1,87 +1,73 @@
 
 package com.ejemplo.apividrios.controller;
 
-import java.util.List;
+import com.ejemplo.apividrios.entity.Vidrio;
+import com.ejemplo.apividrios.service.VidrioService;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.bind.annotation.RequestParam;
-import com.ejemplo.apividrios.dto.VidrioRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.http.HttpStatus;
-import java.util.ArrayList;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/vidrios")
 public class VidrioController {
 
-    @GetMapping
-    public List<String> listarVidrios() {
-        return List.of(
-            "Vidrio incoloro 5 mm",
-            "Vidrio incoloro 6 mm",
-            "Espejo ECO 3 mm"
-        );
+    private final VidrioService service;
+
+    public VidrioController(VidrioService service) {
+        this.service = service;
     }
 
-    @GetMapping("/{id}")
-    public String buscarVidrio(@PathVariable int id) {
-        List<String> vidrios = List.of(
-            "Vidrio incoloro 5 mm",
-            "Vidrio incoloro 6 mm",
-            "Espejo ECO 3 mm"
-        );
+    // CREAR un vidrio
+    @PostMapping
+    public ResponseEntity<Vidrio> crear(@RequestBody Vidrio vidrio) {
+        Vidrio nuevo = service.guardar(vidrio);
+        return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
+    }
 
-        if (id < 1 || id > vidrios.size()) {
-            throw new ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Vidrio no encontrado"
-            );
+    // CONSULTAR todos los vidrios
+    @GetMapping
+    public ResponseEntity<List<Vidrio>> listar() {
+        return ResponseEntity.ok(service.listar());
+    }
+
+    // CONSULTAR un vidrio por ID
+    @GetMapping("/{id}")
+    public ResponseEntity<Vidrio> buscarPorId(@PathVariable Long id) {
+        return service.buscarPorId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // BUSCAR vidrios por tipo
+    @GetMapping("/buscar")
+    public ResponseEntity<List<Vidrio>> buscarPorTipo(
+            @RequestParam String tipo) {
+        return ResponseEntity.ok(service.buscarPorTipo(tipo));
+    }
+
+    // ACTUALIZAR un vidrio
+    @PutMapping("/{id}")
+    public ResponseEntity<Vidrio> actualizar(
+            @PathVariable Long id,
+            @RequestBody Vidrio datos) {
+        try {
+            return ResponseEntity.ok(service.actualizar(id, datos));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // ELIMINAR un vidrio
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        if (service.buscarPorId(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
 
-        return vidrios.get(id - 1);
+        service.eliminar(id);
+        return ResponseEntity.noContent().build();
     }
-@GetMapping("/buscar")
-public List<String> filtrarVidrios(@RequestParam String tipo) {
-
-        List<String> vidrios = List.of(
-            "Vidrio incoloro 5 mm",
-            "Vidrio incoloro 6 mm",
-            "Espejo ECO 3 mm"
-        );
-
-        return vidrios.stream()
-            .filter(vidrio -> {
-                if (tipo.equalsIgnoreCase("INCOLORO")) {
-                    return vidrio.toLowerCase().contains("incoloro");
-                }
-                if (tipo.equalsIgnoreCase("ESPEJO")) {
-                    return vidrio.toLowerCase().contains("espejo");
-                }
-                return false;
-            })
-            .toList();
-    }
-    
-    private final List<VidrioRequest> inventario = new ArrayList<>();
-
-    @PostMapping
-    public ResponseEntity<VidrioRequest> registrarVidrio(
-            @RequestBody VidrioRequest nuevoVidrio) {
-
-        inventario.add(nuevoVidrio);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(nuevoVidrio);
-    }
-
-
 }
